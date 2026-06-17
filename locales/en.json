@@ -1,0 +1,13 @@
+{
+  "translation": {
+    "app_title": "Smart Voice Note",
+    "start_recording": "Start Recording",
+    "stop_recording": "Stop",
+    "history": "Note History",
+    "duration": "Duration",
+    "placeholder_text": "Your voice will be automatically typed here in real-time...",
+    "delete": "Delete",
+    "save": "Save Note",
+    "language": "Language"
+  }
+}

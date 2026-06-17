@@ -1,0 +1,13 @@
+{
+  "translation": {
+    "app_title": "Smart Voice Note",
+    "start_recording": "Mulai Merekam",
+    "stop_recording": "Selesai",
+    "history": "Riwayat Catatan",
+    "duration": "Durasi",
+    "placeholder_text": "Suara Anda akan otomatis diketik di sini secara real-time...",
+    "delete": "Hapus",
+    "save": "Simpan Catatan",
+    "language": "Bahasa"
+  }
+}
