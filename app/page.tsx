@@ -334,18 +334,18 @@ export default function Home() {
 
         {/* Language Selection Switch Toggle */}
         {/* @ts-ignore */}
-        <button 
-          onClick={toggleLanguage}
-          style={{ display: 'flex', alignItems: 'center', justifyIntersection: 'space-between', justifyContent: 'space-between', width: '100%', padding: '12px', backgroundColor: '#0F172A', border: '1px solid #1E293B', borderRadius: '12px', color: '#E2E8F0', cursor: 'pointer' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
-            <Globe style={{ width: '16px', height: '16px', color: '#06B6D4' }} />
-            <span>{t.langLabel}</span>
-          </div>
-          <span style={{ fontSize: '12px', fontWeight: 'bold', padding: '2px 8px', backgroundColor: 'rgba(6, 182, 212, 0.1)', color: '#06B6D4', borderRadius: '4px', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
-            {lang.toUpperCase()}
-          </span>
-        </button>
+        <button
+  onClick={toggleLanguage}
+  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'none', border: 'none', cursor: 'pointer' }}
+>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <Globe style={{ width: 16, height: 16, color: '#06B6D4' }} />
+    <span>{t.langLabel}</span>
+  </div>
+  <span style={{ fontSize: 12 }}>
+    {lang.toUpperCase()}
+  </span>
+</button>
       </aside>
 
       {/* MAIN WORKSPACE */}
