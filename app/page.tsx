@@ -333,6 +333,7 @@ export default function Home() {
         </div>
 
         {/* Language Selection Switch Toggle */}
+        {/* @ts-ignore */}
         <button 
           onClick={toggleLanguage}
           style={{ display: 'flex', alignItems: 'center', justifyIntersection: 'space-between', justifyContent: 'space-between', width: '100%', padding: '12px', backgroundColor: '#0F172A', border: '1px solid #1E293B', borderRadius: '12px', color: '#E2E8F0', cursor: 'pointer' }}
