@@ -18,21 +18,16 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [textResult, setTextResult] = useState('');
   const [seconds, setSeconds] = useState(0);
-  
-  // Mobile Sidebar Toggle
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Audio Playback State for History
   const [playingId, setPlayingId] = useState<number | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-  // Speech & Audio Recording Refs
   const recognitionRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Default History Data
   const [history, setHistory] = useState<HistoryItem[]>([
     { 
       id: 1, 
@@ -62,7 +57,7 @@ export default function Home() {
       recordingLive: "Merekam Langsung",
       placeholder: "Suara Anda akan otomatis diketik di sini secara real-time...",
       langLabel: "Bahasa",
-      saveBtn: "Simpan Catatan & Suara",
+      saveBtn: "Simpan Catatan",
       noAudio: "Tanpa Rekaman Audio",
       defaultNoteTitle: "Catatan Suara Baru",
       dlText: "Unduh Teks",
@@ -75,7 +70,7 @@ export default function Home() {
       recordingLive: "Recording Live",
       placeholder: "Your voice will be automatically typed here in real-time...",
       langLabel: "Language",
-      saveBtn: "Save Note & Audio",
+      saveBtn: "Save Note",
       noAudio: "No Audio Recording",
       defaultNoteTitle: "New Voice Note",
       dlText: "Download TXT",
@@ -83,7 +78,6 @@ export default function Home() {
     }
   }[lang];
 
-  // Web Speech API Integration
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -131,7 +125,7 @@ export default function Home() {
     } else {
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Protokol tidak aman.");
+          throw new Error("Protokol tidak didukung.");
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -157,7 +151,7 @@ export default function Home() {
           setSeconds((prev) => prev + 1);
         }, 1000);
       } catch (err) {
-        alert("Gagal mengakses mikrofon.\n\n1. Pastikan link diawali dengan https:// (BUKAN http://)\n2. Berikan izin perekaman mic pada pengaturan browser HP Anda.");
+        alert("Gagal mengakses mikrofon. Pastikan izin mikrofon diizinkan di browser Anda.");
       }
     }
   };
@@ -191,7 +185,7 @@ export default function Home() {
     setTextResult('');
     setSeconds(0);
     audioChunksRef.current = [];
-    setIsSidebarOpen(false); // Tutup drawer riwayat di HP setelah simpan
+    setIsSidebarOpen(false);
   };
 
   const handleDeleteHistory = (id: number, e: React.MouseEvent) => {
@@ -250,17 +244,17 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-[#0B0F19] text-[#F1F5F9] font-sans overflow-hidden relative">
+    <div className="flex flex-col md:flex-row h-screen bg-[#0B0F19] text-[#F1F5F9] overflow-hidden relative w-full">
       
       <audio ref={audioPlayerRef} className="hidden" />
 
-      {/* HEADER NAV BAR UNTUK MOBILE/HP ONLY */}
-      <div className="flex md:hidden items-center justify-between p-4 bg-[#111827] border-b border-[#1E293B] z-40">
+      {/* HEADER TOP BAR - MOBILE ONLY */}
+      <div className="flex md:hidden items-center justify-between p-4 bg-[#111827] border-b border-[#1E293B] z-40 w-full box-border">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-gradient-to-tr from-[#7C3AED] to-[#06B6D4] rounded-lg flex items-center">
             <Mic className="w-[18px] h-[18px] text-white" />
           </div>
-          <h1 className="text-base font-bold m-0">{t.title}</h1>
+          <h1 className="text-base font-bold m-0 text-white">{t.title}</h1>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -270,7 +264,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* SIDEBAR RIWAYAT (Desktop: Normal, Mobile: Slide-in/Toggle Drawer) */}
+      {/* SIDEBAR RIWAYAT */}
       <aside className={`
         ${isSidebarOpen ? 'flex' : 'hidden'} 
         md:flex flex-col justify-between
@@ -280,18 +274,16 @@ export default function Home() {
         absolute md:relative top-[61px] md:top-0 left-0 
         z-30 box-border
       `}>
-        <div className="flex flex-col h-[90%]">
-          {/* Logo Sidebar Desktop Only */}
+        <div className="flex flex-col h-[90%] overflow-hidden">
           <div className="hidden md:flex items-center gap-3 mb-8">
             <div className="p-2.5 bg-gradient-to-tr from-[#7C3AED] to-[#06B6D4] rounded-xl flex items-center">
               <Mic className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold m-0">{t.title}</h1>
+            <h1 className="text-xl font-bold m-0 text-white">{t.title}</h1>
           </div>
           
           <h2 className="text-[11px] font-bold text-[#64748B] mb-4 tracking-wider">{t.historyHeader}</h2>
           
-          {/* List Item Riwayat */}
           <div className="flex flex-col gap-3 overflow-y-auto flex-1 pr-1">
             {history.map((item) => (
               <div 
@@ -321,7 +313,7 @@ export default function Home() {
                       className={`flex items-center gap-1 text-[11px] text-white border-none px-2 py-1 rounded-md cursor-pointer ${playingId === item.id ? 'bg-[#EF4444]' : 'bg-[#059669]'}`}
                     >
                       {playingId === item.id ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                      {playingId === item.id ? "Pause" : "Play Audio"}
+                      {playingId === item.id ? "Pause" : "Play"}
                     </button>
                   )}
                 </div>
@@ -329,7 +321,7 @@ export default function Home() {
                 <div className="flex gap-2 border-t border-[#2D3748] pt-2.5">
                   <button
                     onClick={(e) => downloadTextFile(item, e)}
-                    className="flex items-center gap-1 text-[11px] text-[#38BDF8] bg-[rgba(56,189,248,0.1)] border border-[rgba(56,189,248,0.2)] px-2 py-1 rounded-md cursor-pointer flex-1 justify-center hover:bg-[rgba(56,189,248,0.2)] transition-colors"
+                    className="flex items-center gap-1 text-[11px] text-[#38BDF8] bg-[rgba(56,189,248,0.1)] border border-[rgba(56,189,248,0.2)] px-2 py-1 rounded-md cursor-pointer flex-1 justify-center hover:bg-[rgba(56,189,248,0.2)]"
                   >
                     <Download className="w-3 h-3" />
                     {t.dlText}
@@ -338,8 +330,8 @@ export default function Home() {
                   {item.audioBlob ? (
                     <button
                       onClick={(e) => downloadAudioFile(item, e)}
-                      className="flex items-center gap-1 text-[11px] text-[#A78BFA] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2 py-1 rounded-md cursor-pointer flex-1 justify-center hover:bg-[rgba(167,139,250,0.2)] transition-colors"
-                  >
+                      className="flex items-center gap-1 text-[11px] text-[#A78BFA] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2 py-1 rounded-md cursor-pointer flex-1 justify-center hover:bg-[rgba(167,139,250,0.2)]"
+                    >
                       <Download className="w-3 h-3" />
                       {t.dlAudio}
                     </button>
@@ -352,7 +344,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tombol Ganti Bahasa di Bawah Sidebar */}
         <button
           onClick={toggleLanguage}
           className="flex items-center justify-between gap-2 bg-transparent border-none cursor-pointer w-full py-2.5 text-[#F1F5F9]"
@@ -367,70 +358,64 @@ export default function Home() {
         </button>
       </aside>
 
-      {/* MAIN WORKSPACE (Area Utama Workspace Catatan) */}
-      <main className={`flex-1 flex flex-col justify-between p-4 md:p-8 overflow-hidden ${isSidebarOpen ? 'hidden md:flex' : 'flex'}`}>
+      {/* MAIN WORKSPACE */}
+      <main className={`flex-1 flex flex-col justify-between p-4 md:p-8 overflow-hidden h-[calc(100vh-61px)] md:h-screen box-border ${isSidebarOpen ? 'hidden md:flex' : 'flex'}`}>
         
-        {/* WORKSPACE HEADER */}
-        <header className="flex justify-between items-center flex-wrap gap-3">
-          <div className="flex items-center gap-3">
+        <header className="flex justify-between items-center w-full">
+          <div className="flex items-center gap-2">
             <div className={`h-2.5 w-2.5 rounded-full ${isRecording ? 'bg-[#EF4444] animate-pulse' : 'bg-[#10B981]'}`} />
-            <span className="text-sm text-[#94A3B8]">
+            <span className="text-xs md:text-sm text-[#94A3B8]">
               {isRecording ? t.recordingLive : t.systemReady}
             </span>
           </div>
           
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-3">
             {!isRecording && textResult && (
               <button
                 onClick={handleSaveToHistory}
-                className="flex items-center gap-2 px-3.5 py-2 bg-[#059669] hover:bg-[#047857] text-white border-none rounded-lg cursor-pointer text-xs md:text-sm font-medium transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#059669] hover:bg-[#047857] text-white border-none rounded-lg cursor-pointer text-xs font-medium transition-colors"
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-3.5 h-3.5" />
                 {t.saveBtn}
               </button>
             )}
-            <div className="text-lg md:text-2xl font-mono font-bold text-[#CBD5E1] bg-[#0F172A] px-3 py-1.5 md:px-4 rounded-xl border border-[#1E293B]">
+            <div className="text-base md:text-2xl font-mono font-bold text-[#CBD5E1] bg-[#0F172A] px-3 py-1.5 rounded-xl border border-[#1E293B]">
               {formatTime(seconds)}
             </div>
           </div>
         </header>
 
-        {/* AREA LEMBAR CATATAN TEXT BOX */}
-        <div className="my-4 flex-1 bg-[rgba(17,24,39,0.5)] border border-[#1E293B] rounded-2xl p-6 relative overflow-y-auto">
+        <div className="my-4 flex-1 bg-[rgba(17,24,39,0.5)] border border-[#1E293B] rounded-2xl p-5 relative overflow-y-auto box-border flex flex-col justify-between">
           {textResult ? (
             <div className="w-full h-full flex flex-col justify-between">
-              <p className="text-base md:text-lg leading-relaxed text-[#E2E8F0] m-0 whiteSpace-pre-wrap">{textResult}</p>
-              
+              <p className="text-sm md:text-lg leading-relaxed text-[#E2E8F0] m-0 whitespace-pre-wrap">{textResult}</p>
               {!isRecording && (
                 <button 
                   onClick={() => { setTextResult(''); setSeconds(0); audioChunksRef.current = []; }}
-                  className="align-self-end mt-4 flex items-center gap-1.5 px-3 py-1.5 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#EF4444] hover:bg-[rgba(239,68,68,0.2)] rounded-md cursor-pointer text-xs transition-colors"
+                  className="self-end mt-4 flex items-center gap-1.5 px-2.5 py-1.5 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#EF4444] hover:bg-[rgba(239,68,68,0.2)] rounded-md cursor-pointer text-xs transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear Workspace
+                  <Trash2 className="w-3 h-3" />
+                  Clear
                 </button>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-[#475569] text-center">
-              <FileText className="w-12 h-12 mb-3" />
-              <p className="text-sm m-0 max-w-xs">{t.placeholder}</p>
+            <div className="flex flex-col items-center justify-center h-full text-[#475569] text-center my-auto">
+              <FileText className="w-10 h-10 mb-2 text-[#475569]" />
+              <p className="text-xs md:text-sm m-0 max-w-xs">{t.placeholder}</p>
             </div>
           )}
         </div>
 
-        {/* FOOTER MIC BUTTON & ANIMATION */}
-        <footer className="flex flex-col items-center gap-4">
-          
-          {/* EQUALIZER REKAMAN */}
-          <div className="h-12 flex items-center gap-1.5">
+        <footer className="flex flex-col items-center gap-3 pb-2">
+          <div className="h-10 flex items-center gap-1">
             <AnimatePresence>
               {isRecording && (
                 [...Array(7)].map((_, i) => (
                   <motion.div
                     key={i}
-                    className="w-1.5 bg-gradient-to-t from-[#06B6D4] to-[#7C3AED] rounded-full"
-                    animate={{ height: [12, i % 2 === 0 ? 45 : 28, 12] }}
+                    className="w-1 bg-gradient-to-t from-[#06B6D4] to-[#7C3AED] rounded-full"
+                    animate={{ height: [10, i % 2 === 0 ? 35 : 22, 10] }}
                     transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.05 }}
                   />
                 ))
@@ -438,14 +423,13 @@ export default function Home() {
             </AnimatePresence>
           </div>
 
-          {/* TOMBOL UTAMA MIC REKAM */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleToggleRecording}
-            className={`p-4 md:p-5 rounded-full border-none cursor-pointer flex items-center justify-center shadow-xl text-white ${isRecording ? 'bg-[#EF4444]' : 'bg-[#7C3AED]'}`}
+            className={`p-4 rounded-full border-none cursor-pointer flex items-center justify-center shadow-lg text-white ${isRecording ? 'bg-[#EF4444]' : 'bg-[#7C3AED]'}`}
           >
-            {isRecording ? <Square className="w-6 h-6 md:w-7 md:h-7 fill-white" /> : <Mic className="w-6 h-6 md:w-7 md:h-7" />}
+            {isRecording ? <Square className="w-6 h-6 fill-white" /> : <Mic className="w-6 h-6" />}
           </motion.button>
         </footer>
       </main>
