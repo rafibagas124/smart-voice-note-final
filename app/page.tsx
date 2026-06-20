@@ -157,12 +157,14 @@ export default function Home() {
       // Sebelumnya tidak ada handler ini sama sekali, jadi kalau speech recognition
       // gagal (network error, permission terpisah dari mic, dsb) tidak ada jejaknya
       // dan user cuma melihat kotak teks tetap kosong tanpa penjelasan.
+      // SEMENTARA: tampilkan kode error apa adanya (termasuk no-speech/aborted)
+      // supaya kita bisa diagnosis lewat layar HP tanpa perlu USB debugging.
       recognition.onerror = (event: any) => {
-        // 'no-speech' dan 'aborted' itu normal (terjadi saat user diam sebentar
-        // atau saat kita sengaja stop), jadi tidak perlu tampilkan sebagai error.
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          setMicError(t.speechError);
-        }
+        setMicError(`[DEBUG] Speech error: ${event.error || 'unknown'}`);
+      };
+
+      recognition.onstart = () => {
+        setMicError(`[DEBUG] Speech recognition STARTED`);
       };
 
       recognitionRef.current = recognition;
