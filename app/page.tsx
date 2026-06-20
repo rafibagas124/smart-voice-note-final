@@ -24,6 +24,9 @@ export default function Home() {
   // Ref ini menyimpan status recording "real-time" supaya callback onend (yang dibuat
   // sekali oleh browser) selalu baca nilai terbaru, bukan nilai lama saat closure dibuat.
   const isRecordingRef = useRef(false);
+  // Menyimpan akumulasi hasil transkrip "final" supaya tidak hilang
+  // setiap kali recognition di-restart otomatis oleh onend.
+  const recognitionFinalTextRef = useRef('');
 
   // Mobile sidebar (history panel) toggle
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -121,16 +124,32 @@ export default function Home() {
       recognition.interimResults = true;
       recognition.lang = lang === 'id' ? 'id-ID' : 'en-US';
 
+      // Disimpan di ref (bukan variable lokal biasa) supaya nilainya tetap awet
+      // walau recognition instance ini di-restart berkali-kali oleh onend.
+      recognitionFinalTextRef.current = '';
+
       recognition.onresult = (event: any) => {
-        let currentTranscript = '';
+        let interimTranscript = '';
+        let finalTranscript = '';
+
         for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcriptPiece = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            currentTranscript += event.results[i][0].transcript + ' ';
+            finalTranscript += transcriptPiece + ' ';
+          } else {
+            interimTranscript += transcriptPiece;
           }
         }
-        if (currentTranscript) {
-          setTextResult((prev) => prev + currentTranscript);
+
+        if (finalTranscript) {
+          recognitionFinalTextRef.current += finalTranscript;
         }
+
+        // Tampilkan gabungan teks final yang sudah terkumpul + teks sementara yang
+        // sedang diucapkan. Sebelumnya kita HANYA pakai isFinal, yang ternyata
+        // di sebagian device/versi Chrome tidak pernah ter-trigger jadi true,
+        // membuat kotak teks selalu kosong walau recognition aktif & "mendengar".
+        setTextResult(recognitionFinalTextRef.current + interimTranscript);
       };
 
       // Chrome di Android sering menghentikan speech recognition secara otomatis
@@ -160,11 +179,9 @@ export default function Home() {
       // SEMENTARA: tampilkan kode error apa adanya (termasuk no-speech/aborted)
       // supaya kita bisa diagnosis lewat layar HP tanpa perlu USB debugging.
       recognition.onerror = (event: any) => {
-        setMicError(`[DEBUG] Speech error: ${event.error || 'unknown'}`);
-      };
-
-      recognition.onstart = () => {
-        setMicError(`[DEBUG] Speech recognition STARTED`);
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          setMicError(`[DEBUG] Speech error: ${event.error || 'unknown'}`);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -208,6 +225,7 @@ export default function Home() {
         setIsRecording(true);
         setSeconds(0);
         setTextResult('');
+        recognitionFinalTextRef.current = '';
         audioChunksRef.current = [];
 
         const mediaRecorder = new MediaRecorder(stream);
