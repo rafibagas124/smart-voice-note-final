@@ -20,6 +20,10 @@ export default function Home() {
   const [textResult, setTextResult] = useState('');
   const [seconds, setSeconds] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  // Ref ini menyimpan status recording "real-time" supaya callback onend (yang dibuat
+  // sekali oleh browser) selalu baca nilai terbaru, bukan nilai lama saat closure dibuat.
+  const isRecordingRef = useRef(false);
 
   // Mobile sidebar (history panel) toggle
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -74,6 +78,8 @@ export default function Home() {
       micNotFound: "Mikrofon tidak ditemukan di perangkat ini.",
       micNotSupported: "Browser ini tidak mendukung perekaman suara, atau halaman tidak diakses lewat koneksi aman (https).",
       micGeneric: "Gagal mengakses mikrofon. Pastikan izin mikrofon diizinkan di browser Anda.",
+      speechNotSupported: "Browser ini tidak mendukung transkrip otomatis suara-ke-teks. Audio tetap direkam dan bisa diunduh, tapi teks tidak akan muncul otomatis. Coba gunakan Google Chrome versi terbaru.",
+      speechError: "Transkrip suara terhenti karena gangguan koneksi atau browser. Audio tetap direkam.",
     },
     en: {
       title: "Smart Voice Note",
@@ -91,6 +97,8 @@ export default function Home() {
       micNotFound: "No microphone was found on this device.",
       micNotSupported: "This browser doesn't support audio recording, or the page isn't loaded over a secure (https) connection.",
       micGeneric: "Failed to access the microphone. Please make sure microphone permission is allowed in your browser.",
+      speechNotSupported: "This browser doesn't support automatic speech-to-text. Audio will still be recorded and can be downloaded, but text won't appear automatically. Try using the latest Google Chrome.",
+      speechError: "Speech transcription stopped due to a connection or browser issue. Audio is still being recorded.",
     }
   }[lang];
 
@@ -98,34 +106,72 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = lang === 'id' ? 'id-ID' : 'en-US';
 
-        recognition.onresult = (event: any) => {
-          let currentTranscript = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              currentTranscript += event.results[i][0].transcript + ' ';
-            }
-          }
-          if (currentTranscript) {
-            setTextResult((prev) => prev + currentTranscript);
-          }
-        };
-
-        recognition.onend = () => {
-          if (isRecording && recognitionRef.current) {
-            try { recognitionRef.current.start(); } catch (e) {}
-          }
-        };
-
-        recognitionRef.current = recognition;
+      if (!SpeechRecognition) {
+        // Browser ini (misal beberapa versi Chrome Android, atau browser non-Chromium)
+        // sama sekali tidak punya API ini. Beri tahu user secara eksplisit,
+        // karena tanpa ini gejalanya cuma "diam saja tanpa teks" yang membingungkan.
+        setSpeechSupported(false);
+        return;
       }
+
+      setSpeechSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = lang === 'id' ? 'id-ID' : 'en-US';
+
+      recognition.onresult = (event: any) => {
+        let currentTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            currentTranscript += event.results[i][0].transcript + ' ';
+          }
+        }
+        if (currentTranscript) {
+          setTextResult((prev) => prev + currentTranscript);
+        }
+      };
+
+      // Chrome di Android sering menghentikan speech recognition secara otomatis
+      // setelah jeda hening singkat, walau mic masih merekam normal lewat MediaRecorder.
+      // onend akan dipanggil tiap kali itu terjadi, jadi kita restart otomatis
+      // selama isRecordingRef.current masih true (dibaca dari ref, bukan state,
+      // supaya tidak kena stale closure dari saat effect ini pertama dibuat).
+      recognition.onend = () => {
+        if (isRecordingRef.current && recognitionRef.current) {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            // start() bisa throw kalau dipanggil saat instance masih dalam proses stop.
+            // Coba sekali lagi sedikit setelahnya.
+            setTimeout(() => {
+              if (isRecordingRef.current && recognitionRef.current) {
+                try { recognitionRef.current.start(); } catch (e2) {}
+              }
+            }, 300);
+          }
+        }
+      };
+
+      // Sebelumnya tidak ada handler ini sama sekali, jadi kalau speech recognition
+      // gagal (network error, permission terpisah dari mic, dsb) tidak ada jejaknya
+      // dan user cuma melihat kotak teks tetap kosong tanpa penjelasan.
+      recognition.onerror = (event: any) => {
+        // 'no-speech' dan 'aborted' itu normal (terjadi saat user diam sebentar
+        // atau saat kita sengaja stop), jadi tidak perlu tampilkan sebagai error.
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          setMicError(t.speechError);
+        }
+      };
+
+      recognitionRef.current = recognition;
+
+      return () => {
+        try { recognition.stop(); } catch (e) {}
+      };
     }
-  }, [isRecording, lang]);
+  }, [lang]);
 
   // Toggle Language Handler
   const toggleLanguage = () => {
@@ -135,8 +181,11 @@ export default function Home() {
   // Start & Stop Recording Control
   const handleToggleRecording = async () => {
     if (isRecording) {
+      isRecordingRef.current = false;
       setIsRecording(false);
-      if (recognitionRef.current) recognitionRef.current.stop();
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
       if (timerRef.current) clearInterval(timerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
@@ -153,6 +202,7 @@ export default function Home() {
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        isRecordingRef.current = true;
         setIsRecording(true);
         setSeconds(0);
         setTextResult('');
@@ -167,8 +217,13 @@ export default function Home() {
         mediaRecorderRef.current = mediaRecorder;
         mediaRecorder.start();
 
+        // Speech recognition tetap dicoba dijalankan kalau API-nya tersedia.
+        // Kalau tidak tersedia sama sekali (speechSupported === false), kita beri tahu
+        // user lewat banner, tapi rekaman audio tetap berjalan normal lewat MediaRecorder.
         if (recognitionRef.current) {
           try { recognitionRef.current.start(); } catch (e) {}
+        } else if (!speechSupported) {
+          setMicError(t.speechNotSupported);
         }
 
         timerRef.current = setInterval(() => {
@@ -472,6 +527,13 @@ export default function Home() {
             <button onClick={() => setMicError(null)} className="shrink-0 text-red-400/70 hover:text-red-400">
               <X className="w-4 h-4" />
             </button>
+          </div>
+        )}
+
+        {/* PERINGATAN: browser tidak mendukung transkrip otomatis sama sekali */}
+        {!speechSupported && !micError && (
+          <div className="mt-3 md:mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs md:text-sm">
+            {t.speechNotSupported}
           </div>
         )}
 
