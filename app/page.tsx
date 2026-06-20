@@ -21,6 +21,10 @@ export default function Home() {
   const [seconds, setSeconds] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
   const [speechSupported, setSpeechSupported] = useState(true);
+  // Dipakai supaya tombol Simpan tetap muncul walau transkrip otomatis kosong
+  // (misal di browser/device yang Speech Recognition-nya tidak menghasilkan teks),
+  // asalkan rekaman audio-nya sendiri berhasil tersimpan.
+  const [hasRecordedAudio, setHasRecordedAudio] = useState(false);
   // Ref ini menyimpan status recording "real-time" supaya callback onend (yang dibuat
   // sekali oleh browser) selalu baca nilai terbaru, bukan nilai lama saat closure dibuat.
   const isRecordingRef = useRef(false);
@@ -83,6 +87,7 @@ export default function Home() {
       micGeneric: "Gagal mengakses mikrofon. Pastikan izin mikrofon diizinkan di browser Anda.",
       speechNotSupported: "Browser ini tidak mendukung transkrip otomatis suara-ke-teks. Audio tetap direkam dan bisa diunduh, tapi teks tidak akan muncul otomatis. Coba gunakan Google Chrome versi terbaru.",
       speechError: "Transkrip suara terhenti karena gangguan koneksi atau browser. Audio tetap direkam.",
+      audioOnlyNotice: "Rekaman audio berhasil disimpan. Transkrip otomatis tidak tersedia di browser ini, tapi Anda tetap bisa menyimpan dan mengunduh audionya.",
     },
     en: {
       title: "Smart Voice Note",
@@ -102,6 +107,7 @@ export default function Home() {
       micGeneric: "Failed to access the microphone. Please make sure microphone permission is allowed in your browser.",
       speechNotSupported: "This browser doesn't support automatic speech-to-text. Audio will still be recorded and can be downloaded, but text won't appear automatically. Try using the latest Google Chrome.",
       speechError: "Speech transcription stopped due to a connection or browser issue. Audio is still being recorded.",
+      audioOnlyNotice: "Audio recording saved successfully. Automatic transcription isn't available in this browser, but you can still save and download the audio.",
     }
   }[lang];
 
@@ -225,6 +231,7 @@ export default function Home() {
         setIsRecording(true);
         setSeconds(0);
         setTextResult('');
+        setHasRecordedAudio(false);
         recognitionFinalTextRef.current = '';
         audioChunksRef.current = [];
 
@@ -232,6 +239,7 @@ export default function Home() {
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
             audioChunksRef.current.push(event.data);
+            setHasRecordedAudio(true);
           }
         };
         mediaRecorderRef.current = mediaRecorder;
@@ -292,6 +300,7 @@ export default function Home() {
     setHistory([newItem, ...history]);
     setTextResult('');
     setSeconds(0);
+    setHasRecordedAudio(false);
     audioChunksRef.current = [];
   };
 
@@ -512,7 +521,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            {!isRecording && textResult && (
+            {!isRecording && (textResult || hasRecordedAudio) && (
               <button
                 onClick={handleSaveToHistory}
                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white border-none rounded-lg cursor-pointer text-sm font-medium"
@@ -565,13 +574,28 @@ export default function Home() {
 
               {!isRecording && (
                 <button
-                  onClick={() => { setTextResult(''); setSeconds(0); audioChunksRef.current = []; }}
+                  onClick={() => { setTextResult(''); setSeconds(0); setHasRecordedAudio(false); audioChunksRef.current = []; }}
                   className="self-end mt-4 flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-md cursor-pointer text-xs"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Clear Workspace
                 </button>
               )}
+            </div>
+          ) : !isRecording && hasRecordedAudio ? (
+            // Audio berhasil terekam tapi tidak ada transkrip otomatis (umum terjadi
+            // di sebagian browser/device Android). Tetap beri tahu jelas, bukan diam,
+            // supaya user tahu rekamannya tetap aman dan bisa disimpan/diunduh.
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <FileText className="w-10 h-10 md:w-12 md:h-12 mb-3 text-slate-600" />
+              <p className="text-sm text-slate-400 m-0">{t.audioOnlyNotice}</p>
+              <button
+                onClick={() => { setHasRecordedAudio(false); setSeconds(0); audioChunksRef.current = []; }}
+                className="mt-4 flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-md cursor-pointer text-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear Workspace
+              </button>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-600 text-center px-4">
@@ -581,7 +605,7 @@ export default function Home() {
           )}
 
           {/* Tombol simpan untuk mobile, karena header desktop disembunyikan */}
-          {!isRecording && textResult && (
+          {!isRecording && (textResult || hasRecordedAudio) && (
             <button
               onClick={handleSaveToHistory}
               className="md:hidden mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white border-none rounded-lg cursor-pointer text-sm font-medium"
